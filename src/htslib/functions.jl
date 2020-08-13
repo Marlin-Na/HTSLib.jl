@@ -25,7 +25,7 @@ bam_get_cigar(b::bam1_t) = Ptr{UInt32}(b.data + b.core.l_qname)
 bam_get_seq(b::bam1_t)   = b.data + (b.core.n_cigar<<2) + b.core.l_qname
 bam_get_qual(b::bam1_t)  = b.data + (b.core.n_cigar<<2) + b.core.l_qname + (b.core.l_qseq+1)>>1
 bam_get_aux(b::bam1_t)   = b.data + (b.core.n_cigar<<2) + b.core.l_qname + (b.core.l_qseq+1)>>1 + b.core.l_qseq
-bam_get_l_aux(b::bam1_t) = b.data - (b.core.n_cigar<<2) - b.core.l_qname - b.core.l_qseq - (b.core.l_qseq+1)>>1
+bam_get_l_aux(b::bam1_t) = b.l_data - (b.core.n_cigar<<2) - b.core.l_qname - b.core.l_qseq - (b.core.l_qseq+1)>>1
 
 bam_seqi(s::Ptr{UInt8}, i::Integer) = unsafe_load(s, i>>1 + 1) >> ((~i&1)<<2) & 0xf
 
