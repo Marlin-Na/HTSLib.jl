@@ -143,3 +143,39 @@ const RANS = RANS0
     EXTERNAL           = 4
     CORE               = 5
 end
+
+
+# hfile_internal.h
+# ----------------
+
+# These are not in the public header file, but they are needed for extending hFILE to support arbitrary IO in julia.
+
+struct hFILE_backend
+    read::Ptr{Cvoid}
+    write::Ptr{Cvoid}
+    seek::Ptr{Cvoid}
+    flush::Ptr{Cvoid}
+    close::Ptr{Cvoid}
+end
+
+# This hFILE_base struct represents the header part of hFILE type for the purpose of accessing
+# backend field.
+# Note that: "you should imagine that hFILE is an opaque incomplete type. They may change in future releases."
+
+struct hFILE_base
+    buffer::Ptr{Cchar}
+    beginz::Ptr{Cchar}
+    endz::Ptr{Cchar}
+    limit::Ptr{Cchar}
+    backend::Ptr{hFILE_backend}
+    offset::Coff_t
+    ## remaining fields (as of 06/2021):
+    ##      unsigned at_eof:1, mobile:1, readonly:1;
+    ##      int has_errno;
+    ## just reserve enough space
+    remaining::UInt128
+end
+
+# functions
+@defun hfile_init(struct_size::Csize_t, mode::Ptr{Cchar}, capacity::Csize_t)::Ptr{hFILE}
+@defun hfile_destroy(fp::Ptr{hFILE})::Cvoid

@@ -4,10 +4,7 @@ Low-level binding to htslib.
 module htslib
 
 using htslib_jll: libhts
-
-include("types.jl")
-include("constants.jl")
-include("functions.jl")
+import TranscodingStreams
 
 # A macro that makes function binding definitions concise.
 # For example, @defun foo(x::S, y::T)::U is expanded to:
@@ -39,6 +36,10 @@ macro defun(ex::Expr)
               argnames...))
 end
 
+include("types.jl")
+include("constants.jl")
+include("functions.jl")
+
 # The following files are machine-generated.  Do not edit them by hand.
 include("htslib/bgzf.jl")
 include("htslib/knetfile.jl")
@@ -51,5 +52,8 @@ include("htslib/faidx.jl")
 include("htslib/tbx.jl")
 include("htslib/regidx.jl")
 include("htslib/sam.jl")
+
+# Implementation of hFILE backend using julia's IO type
+include("hfile_backend.jl")
 
 end
