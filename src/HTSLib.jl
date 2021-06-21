@@ -39,6 +39,10 @@ mutable struct BamRecord
     end
 end
 
+function Base.pointer(x::BamRecord)
+    x.ptr
+end
+
 function Base.show(io::IO, record::BamRecord)
     ptr = record.ptr
     ptr == C_NULL && error("pointer is invalid")

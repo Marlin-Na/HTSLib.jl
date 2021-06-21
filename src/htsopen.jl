@@ -23,6 +23,10 @@ mutable struct SamHeader
     end
 end
 
+function Base.pointer(x::SamHeader)
+    x.sam_hdr
+end
+
 function SamHeader(x::SamHeader)
     dup = htslib.sam_hdr_dup(x.sam_hdr)
     dup == C_NULL && error("failed to duplicate sam_hdr: $(x.sam_hdr)")
@@ -42,6 +46,10 @@ mutable struct HTSIOWrapper{T<:IO}
     function HTSIOWrapper{T}() where {T}
         new{T}()
     end
+end
+
+function Base.pointer(x::HTSIOWrapper)
+    x.htsFile
 end
 
 function SamHeader(hf::HTSIOWrapper)
