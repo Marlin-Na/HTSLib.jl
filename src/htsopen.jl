@@ -111,7 +111,7 @@ function htsopen(io::IO, mode::String; index=nothing)
             h.htsFile == C_NULL && error("invalid pointer")
             h.hfile == C_NULL && error("invalid pointer")
             ret = htslib.hts_close(h.htsFile)
-            ret < 0 && error("error running hts_close with exit code $ret")
+            ret < 0 && Base.systemerror("error running hts_close with exit code $ret")
             # Looks like that hts_close will also free the underlying hfile. So we don't need it here.
             # htslib.hfile_destroy(hfileptr)
         end
