@@ -18,7 +18,7 @@ function hfile_backend_read(fp, buffer, nbytes)
     _hfile_backend_read(_restore_hfile_io(fp), buffer, nbytes)
 end
 function _hfile_backend_read(io::IO, buffer::Ptr{Cvoid}, nbytes::Csize_t)::Cssize_t
-    ## TODO: handle error and return negative value
+    ## TODO: handle error, set errno and return negative value
     # TranscodingStreams.unsafe_read is different from Base.unsafe_read
     bytes_written = TranscodingStreams.unsafe_read(io, convert(Ptr{UInt8}, buffer), convert(Int, nbytes))
     return bytes_written
@@ -30,7 +30,7 @@ function hfile_backend_write(fp, buffer, nbytes)
     _hfile_backend_write(_restore_hfile_io(fp), buffer, nbytes)
 end
 function _hfile_backend_write(io::IO, buffer::Ptr{Cvoid}, nbytes::Csize_t)::Cssize_t
-    ## TODO: handle error and return negative value
+    ## TODO: handle error, set errno and return negative value
     bytes_written = unsafe_write(io, buffer, nbytes)
     return bytes_written
 end
@@ -48,27 +48,32 @@ function _hfile_backend_seek(io::IO, offset::Coff_t, whence::Cint)::Coff_t
     if whence == SEEK_SET
         origin = 0
     elseif whence == SEEK_CUR
-        origin = position(io)
-    elseif whence == SEEK_END
-        try
-            # trick to get end position
-            seekend(io)
-            origin = position(io)
-        catch error
-            println(error)
+        if !Core.applicable(position, io)
+            Base.Libc.errno(Base.Libc.ESPIPE)
             return -1
         end
+        origin = position(io)
+    elseif whence == SEEK_END
+        if !Core.applicable(seekend, io)
+            Base.Libc.errno(Base.Libc.ESPIPE)
+            return -1
+        end
+        # trick to get end position
+        seekend(io)
+        origin = position(io)
     else
         println("invalid whence argument: $whence")
+        Base.Libc.errno(Base.Libc.EINVAL)
         return -1
     end
     realoffset = origin + offset
-    try
-        seek(io, realoffset)
-    catch error
-        println(error)
+
+    if !Core.applicable(seek, io)
+        Base.Libc.errno(Base.Libc.ESPIPE)
         return -1
     end
+
+    seek(io, realoffset)
     return realoffset
 end
 
@@ -78,12 +83,7 @@ function hfile_backend_flush(fp)
     _hfile_backend_flush(_restore_hfile_io(fp))
 end
 function _hfile_backend_flush(io::IO)::Cint
-    try
-        flush(io)
-    catch error
-        println(error)
-        return -1
-    end
+    flush(io)
     return 0
 end
 
@@ -94,12 +94,11 @@ function hfile_backend_close(fp)
     _hfile_backend_close(_restore_hfile_io(fp))
 end
 function _hfile_backend_close(io::IO)::Cint
-    try
-        close(io) 
-    catch error
-        println(error)
-        return -1
+    # if the io object didn't implement close, we shouldn't worry about it
+    if !Core.applicable(close, io)
+        return 0
     end
+    close(io)
     return 0
 end
 
