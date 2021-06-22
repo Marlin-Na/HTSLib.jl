@@ -39,6 +39,15 @@ mutable struct BamRecord
     end
 end
 
+function BamRecord(x::BamRecord)
+    ans = BamRecord()
+    GC.@preserve x ans begin
+        p = htslib.bam_copy1(pointer(ans), pointer(x))
+        p == C_NULL && error("error copying bam record $x")
+    end
+    ans
+end
+
 function Base.pointer(x::BamRecord)
     x.ptr
 end
