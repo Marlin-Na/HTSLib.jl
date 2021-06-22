@@ -53,10 +53,12 @@ function Base.pointer(x::BamRecord)
 end
 
 function Base.show(io::IO, record::BamRecord)
-    ptr = record.ptr
-    ptr == C_NULL && error("pointer is invalid")
-    bam = unsafe_load(ptr)
-    @printf(io, "%s(<%d:%d@%p>) ", summary(record), bam.core.tid, bam.core.pos, ptr)
+    GC.@preserve record begin
+        ptr = record.ptr
+        ptr == C_NULL && error("pointer is invalid")
+        bam = unsafe_load(ptr)
+        @printf(io, "%s(<%d:%d@%p>) ", summary(record), bam.core.tid, bam.core.pos, ptr)
+    end
     record
 end
 
