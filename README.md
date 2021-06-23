@@ -3,6 +3,12 @@
 [![Build Status](https://travis-ci.com/bicycle1885/HTSLib.jl.svg?branch=master)](https://travis-ci.com/bicycle1885/HTSLib.jl)
 [![Codecov](https://codecov.io/gh/bicycle1885/HTSLib.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/bicycle1885/HTSLib.jl)
 
+NOTE: this is a fork of Kenta Sato's [repo](https://github.com/bicycle1885/HTSLib.jl). I am implementing a high-level API
+on top of it here. See [`examples/remotefile.jl`](examples/remotefile.jl) as an example.
+
+
+---------------------------------
+
 - **NOTE: This package is still pre-alpha in development and should not be used before official release.**
 - **NOTE: The following overview states the goal of this pakcage; many features are not implemented yet.**
 
