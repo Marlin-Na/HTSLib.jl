@@ -68,7 +68,7 @@ function _hfile_backend_seek(io::IO, offset::Coff_t, whence::Cint)::Coff_t
     end
     realoffset = origin + offset
 
-    if !Core.applicable(seek, io)
+    if !Core.applicable(seek, io, realoffset)
         Base.Libc.errno(Base.Libc.ESPIPE)
         return -1
     end
