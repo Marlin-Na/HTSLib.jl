@@ -1,5 +1,16 @@
 module HTSLib
 
+import BioGenerics:
+    seqname,
+    sequence,
+    metadata,
+    leftposition,
+    rightposition,
+    isoverlapping,
+    metainfoval,
+    metainfotag,
+    header
+
 export htslib
 #export eachrecord
 
