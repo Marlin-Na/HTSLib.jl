@@ -52,13 +52,14 @@ function Base.show(io::IO, record::BamRecord)
         @printf(io, "%s(<%p>) %d:%d-%d ", summary(record), ptr, seqlevel(record), leftposition(record), rightposition(record))
     end
     print(io, "\n")
-    print(io, "mapqual : $(mappingquality(record))\n")
-    print(io, "sequence: ")
+    print(io, "queryname: $(queryname(record))\n")
+    print(io, "mapqual  : $(mappingquality(record))\n")
+    print(io, "sequence : ")
     for s in sequence(record)
         print(s)
     end
     print(io, "\n")
-    print(io, "quality : ")
+    print(io, "quality  : ")
     for q in quality(record)
         print(io, quality_char(q))
     end
@@ -233,4 +234,14 @@ function setsequence!(record::BamRecord, i::Integer, value::Char)
         htslib.bam_set_seqi(htslib.bam_get_seq(pointer(record)), i-1, base_code)
     end
     record
+end
+
+function queryname(record::BamRecord)::String
+    # Note: l_qname is length of the name _plus_ number of NULs (1-4) for memory alignment
+    GC.@preserve record begin
+        l_qname = record.l_qname
+        l_qname <= 0 && return "*" # If set to 0, the placeholder query name "*" will be used.
+        cstr = htslib.bam_get_qname(pointer(record))
+        unsafe_string(pointer(cstr))
+    end
 end

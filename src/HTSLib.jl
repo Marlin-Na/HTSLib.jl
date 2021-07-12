@@ -29,7 +29,8 @@ export sequence!,
     seqlevel,
     quality,
     setquality!,
-    setsequence!
+    setsequence!,
+    queryname
 
 export htslib
 #export eachrecord
