@@ -1,6 +1,7 @@
 module HTSLib
 
 import BioGenerics:
+    BioGenerics,
     seqname,
     sequence,
     metadata,
@@ -10,6 +11,25 @@ import BioGenerics:
     metainfoval,
     metainfotag,
     header
+
+# BioGenerics reexport
+export seqname,
+    sequence,
+    metadata,
+    leftposition,
+    rightposition,
+    isoverlapping,
+    metainfoval,
+    metainfotag,
+    header
+
+export sequence!,
+    seqlength,
+    mappingquality,
+    seqlevel,
+    quality,
+    setquality!,
+    setsequence!
 
 export htslib
 #export eachrecord

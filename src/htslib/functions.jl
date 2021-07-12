@@ -28,6 +28,10 @@ bam_get_aux(b::bam1_t)   = b.data + (b.core.n_cigar<<2) + b.core.l_qname + (b.co
 bam_get_l_aux(b::bam1_t) = b.l_data - (b.core.n_cigar<<2) - b.core.l_qname - b.core.l_qseq - (b.core.l_qseq+1)>>1
 
 bam_seqi(s::Ptr{UInt8}, i::Integer) = unsafe_load(s, i>>1 + 1) >> ((~i&1)<<2) & 0xf
+bam_set_seqi(s::Ptr{UInt8}, i::Integer, b::UInt8) = begin
+    val = (unsafe_load(s, (i>>1) + 1) & (0xf0 >> ((~i & 1)<<2))) | ((b)<<((~i & 1)<<2))
+    unsafe_store!(s, val, (i>>1) + 1)
+end
 
 function bam_set_mempolicy(b::Ptr{bam1_t}, policy::Integer)
     dst = Ptr{UInt8}(b) + fieldoffset(bam1_t, 6)
