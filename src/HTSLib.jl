@@ -24,12 +24,13 @@ export seqname,
     header
 
 export sequence!,
+    setsequence!,
     seqlength,
     mappingquality,
     seqlevel,
     quality,
+    quality!,
     setquality!,
-    setsequence!,
     queryname
 
 export htslib
@@ -38,10 +39,13 @@ export htslib
 using Printf: @printf
 using Setfield: @set
 
+import HttpIO: HttpIO, PoorGCloudAuth, GCSClient, GCSFileIO, HttpFileIO
+
 import TranscodingStreams
 
 include("htslib/htslib.jl")
 include("bamrecord.jl")
+include("htsindex.jl")
 include("htsopen.jl")
 
 """

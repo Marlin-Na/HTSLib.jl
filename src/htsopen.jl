@@ -77,7 +77,12 @@ function Base.show(io::IO, x::SamHeader)
     x
 end
 
-function htsopen(io::IO, mode::String; index=nothing)
+function htsopen(source::AbstractString; kwargs...)
+    htsopen(remote_io(source); kwargs...)
+end
+
+function htsopen(io::IO; index=nothing, write=false)
+    mode = write ? "r+" : "r"
     hfileptr = htslib.hfile_init(sizeof(htslib.hFILE_julia), pointer(mode), 0)
     hfileptr = convert(Ptr{htslib.hFILE_julia}, hfileptr)
     hfile_backend = Ref(htslib.hfile_julia_backend())
@@ -127,23 +132,71 @@ function htsopen(io::IO, mode::String; index=nothing)
         sam_hdr == C_NULL && error("error reading sam header")
         h.samheader = SamHeader(sam_hdr)
     end
-    let
-        # load index. Here closing the htsFile will also free the index, otherwise we need to use hts_idx_destroy
-        if !isnothing(index)
-            # TODO: should also have a way to support remote index file
-            if index isa String
-                ptr = htslib.hts_idx_load2(pointer("/dummy"), pointer(index))
-                ptr == C_NULL && error("error loading index file $(index)")
-
-                tmp = unsafe_load(h.htsFile)
-                @set tmp.idx = ptr
-                unsafe_store!(h.htsFile, tmp)
-            else
-                error("unsupported index type $(typeof(index)) $(index)")
-            end
-        end
-    end
+    # load index.
+    htssetindex!(h, index)
     h
+end
+
+"""
+    htssetindex!(htsio::HTSIOWrapper, index::AbstractString)
+
+Load index of hts file. Supports local file, http url and gs url.
+"""
+function htssetindex!(htsio::HTSIOWrapper, index)
+    htssetindex!(htsio, HTSIndexData(index))
+end
+
+function htssetindex!(htsio::HTSIOWrapper, index::AbstractString)
+    # short circuit for local file (avoid current roundtrip of disk->memory->disk->memory)
+    if index isa AbstractString && (~occursin(r"^.*://.*$", index))
+        ptr = htslib.hts_idx_load2(pointer("/dummy"), pointer(index))
+        ptr == C_NULL && error("error loading index file $(index)")
+        let
+            tmp = unsafe_load(pointer(htsio))
+            @set tmp.idx = ptr
+            unsafe_store!(pointer(htsio), tmp)
+        end
+        return htsio
+    end
+
+    htssetindex!(htsio, HTSIndexData(index))
+end
+
+function htssetindex!(htsio::HTSIOWrapper, index::Nothing)
+    # hts_close will also free the index, otherwise we need to call hts_idx_destroy
+    oldidx = unsafe_load(pointer(htsio)).idx
+    let
+        tmp = unsafe_load(pointer(htsio))
+        @set tmp.idx = C_NULL
+        unsafe_store!(pointer(htsio), tmp)
+    end
+    oldidx != C_NULL && htslib.hts_idx_destroy(oldidx)
+    return htsio
+end
+
+function htssetindex!(htsio::HTSIOWrapper, index::HTSIndexData)
+    content = parent(index)::Vector{UInt8}
+    # this is a dirty solution
+    ptr = mktemp() do tmppath, tmpio
+        write(tmpio, content)
+        flush(tmpio)
+        ptr = GC.@preserve tmppath htslib.hts_idx_load2(pointer("/dummy"), pointer(tmppath))
+        ptr == C_NULL && throw("Failed to load hts index file")
+        ptr
+    end
+
+    # if index already exists, call hts_idx_destroy on the old index
+    oldidx = unsafe_load(pointer(htsio)).idx
+
+    # assign new index
+    let
+        tmp = unsafe_load(pointer(htsio))
+        @set tmp.idx = ptr
+        unsafe_store!(pointer(htsio), tmp)
+    end
+
+    oldidx != C_NULL && htslib.hts_idx_destroy(oldidx)
+    return htsio
 end
 
 function Base.show(io::IO, hf::HTSIOWrapper)
