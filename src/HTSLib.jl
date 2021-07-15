@@ -47,6 +47,7 @@ include("htslib/htslib.jl")
 include("bamrecord.jl")
 include("htsindex.jl")
 include("htsopen.jl")
+include("iteration.jl")
 
 """
 The version of htslib.
