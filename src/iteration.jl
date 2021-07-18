@@ -2,21 +2,26 @@
 # Iterator
 # --------
 
-function Base.iterate(hf::HTSIOWrapper, state::Missing)
-    record = BamRecord()
-    try
-        read!(hf, record)
-    catch err
-        if err isa EOFError
-            return nothing
-        else
-            rethrow()
-        end
-    end
+function Base.eltype(::HTSReadWriter)
+    HTSRecord
+end
+
+function Base.IteratorSize(::Type{T}) where T<: HTSReadWriter
+    Base.SizeUnknown()
+end
+
+
+function Base.iterate(hf::HTSReadWriter, state::Missing)
+    record = HTSRecord()
+    isnothing(tryread!(hf, record)) && return nothing
     return (record, state)
 end
 
-function Base.iterate(hf::HTSIOWrapper)
+function Base.iterate(hf::HTSReadWriter)
     state = missing
     iterate(hf, state)
 end
+
+#function eachrecord(hf::HTSReadWriter)
+#end
+

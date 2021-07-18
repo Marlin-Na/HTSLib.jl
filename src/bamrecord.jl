@@ -2,14 +2,14 @@
 # Record view
 # -----------
 
-export BamRecord
+export HTSRecord
 
 """
 A light-weight wrapper of records.
 """
-mutable struct BamRecord
+mutable struct HTSRecord
     ptr::Ptr{htslib.bam1_t}
-    function BamRecord()
+    function HTSRecord()
         ptr = htslib.bam_init1()
         @assert ptr != C_NULL
         record = new(ptr)
@@ -22,11 +22,11 @@ mutable struct BamRecord
     end
 end
 
-function BamRecord(x::BamRecord)
+function HTSRecord(x::HTSRecord)
     copy(x)
 end
 
-function Base.copy!(dst::BamRecord, src::BamRecord)
+function Base.copy!(dst::HTSRecord, src::HTSRecord)
     GC.@preserve src begin
         p = htslib.bam_copy1(pointer(dst), pointer(src))
         p == C_NULL && error("error copying bam record $src")
@@ -34,29 +34,29 @@ function Base.copy!(dst::BamRecord, src::BamRecord)
     dst
 end
 
-function Base.copy(record::BamRecord)
-    ans = BamRecord()
+function Base.copy(record::HTSRecord)
+    ans = HTSRecord()
     copy!(ans, record)
     ans
 end
 
-function Base.pointer(x::BamRecord)
+function Base.pointer(x::HTSRecord)
     x.ptr
 end
 
-function Base.show(io::IO, record::BamRecord)
+function Base.show(io::IO, record::HTSRecord)
     GC.@preserve record begin
         ptr = record.ptr
         ptr == C_NULL && error("pointer is invalid")
         bam = unsafe_load(ptr)
-        @printf(io, "%s(<%p>) %d:%d-%d ", summary(record), ptr, seqlevel(record), leftposition(record), rightposition(record))
+        @printf(io, "%s(<%p>) %d:%d-%d ", summary(record), ptr, refid(record), leftposition(record), rightposition(record))
     end
     print(io, "\n")
     print(io, "queryname: $(queryname(record))\n")
     print(io, "mapqual  : $(mappingquality(record))\n")
     print(io, "sequence : ")
     for s in sequence(record)
-        print(s)
+        print(io, s)
     end
     print(io, "\n")
     print(io, "quality  : ")
@@ -95,7 +95,7 @@ function quality_char(qual::UInt8)
 	return '?'
 end
 
-@inline function Base.getproperty(view::BamRecord, name::Symbol)
+@inline function Base.getproperty(view::HTSRecord, name::Symbol)
     GC.@preserve view begin
         bam = unsafe_load(getfield(view, :ptr))
     end
@@ -133,21 +133,21 @@ end
 
 const seq_nt16_str = ('=','A','C','M','G','R','S','V','T','W','Y','H','K','D','B','N')
 
-function BioGenerics.leftposition(record::BamRecord)::Int64
+function BioGenerics.leftposition(record::HTSRecord)::Int64
     record.pos + 1 # start pos is zero-based
 end
 
-function BioGenerics.rightposition(record::BamRecord)::Int64
+function BioGenerics.rightposition(record::HTSRecord)::Int64
     GC.@preserve record begin
         htslib.bam_endpos(pointer(record))
     end
 end
 
-function seqlength(record::BamRecord)::Int32
+function seqlength(record::HTSRecord)::Int32
     record.l_qseq
 end
 
-function BioGenerics.sequence(record::BamRecord, i::Integer)::Char
+function BioGenerics.sequence(record::HTSRecord, i::Integer)::Char
     GC.@preserve record begin
         seq_ptr = htslib.bam_get_seq(pointer(record))
         idx = htslib.bam_seqi(seq_ptr, i-UInt8(1)) + 1
@@ -155,7 +155,7 @@ function BioGenerics.sequence(record::BamRecord, i::Integer)::Char
     end
 end
 
-function sequence!(record::BamRecord, array::AbstractVector{Char})
+function sequence!(record::HTSRecord, array::AbstractVector{Char})
     seql = seqlength(record)
     empty!(array)
     sizehint!(array, seql)
@@ -168,20 +168,23 @@ function sequence!(record::BamRecord, array::AbstractVector{Char})
     array
 end
 
-function BioGenerics.sequence(record::BamRecord)
+function BioGenerics.sequence(record::HTSRecord)
     ans = Vector{Char}(undef, seqlength(record))
     sequence!(record, ans)
 end
 
-function mappingquality(record::BamRecord)::UInt8
+function mappingquality(record::HTSRecord)::UInt8
     record.qual
 end
 
-function seqlevel(record::BamRecord)::Int32
+function refid(record::HTSRecord)::Int32
     record.tid + Int32(1)
 end
 
-function quality!(record::BamRecord, array::AbstractVector)
+# TODO
+function refname end
+
+function quality!(record::HTSRecord, array::AbstractVector)
     seql = seqlength(record)
     empty!(array)
     sizehint!(array, seql)
@@ -194,13 +197,13 @@ function quality!(record::BamRecord, array::AbstractVector)
     array
 end
 
-function quality(record::BamRecord)
+function quality(record::HTSRecord)
     #### TODO: quality score 255 represents missing. Do we want to return missing?
     ans = Vector{UInt8}(undef, seqlength(record))
     quality!(record, ans)
 end
 
-function setquality!(record::BamRecord, i::Integer, value::Integer)
+function setquality!(record::HTSRecord, i::Integer, value::Integer)
     #### TODO: quality score 255 represents missing.?
     value = convert(UInt8, value)
     GC.@preserve record begin
@@ -214,7 +217,7 @@ function setquality!(record::BamRecord, i::Integer, value::Integer)
     record
 end
 
-function setquality!(record::BamRecord, value::AbstractVector{<:Integer})
+function setquality!(record::HTSRecord, value::AbstractVector{<:Integer})
     seqlength(record) != length(value) && throw(BoundsError(value))
     for (i, v) in enumerate(value)
         setquality!(record, i, v)
@@ -222,7 +225,7 @@ function setquality!(record::BamRecord, value::AbstractVector{<:Integer})
     record
 end
 
-function setsequence!(record::BamRecord, i::Integer, value::Char)
+function setsequence!(record::HTSRecord, i::Integer, value::Char)
     GC.@preserve record begin
         ## bounds check
         if i <= 0 || i > seqlength(record) 
@@ -236,7 +239,7 @@ function setsequence!(record::BamRecord, i::Integer, value::Char)
     record
 end
 
-function queryname(record::BamRecord)::String
+function queryname(record::HTSRecord)::String
     # Note: l_qname is length of the name _plus_ number of NULs (1-4) for memory alignment
     GC.@preserve record begin
         l_qname = record.l_qname

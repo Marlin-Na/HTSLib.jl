@@ -11,6 +11,10 @@ function _restore_hfile_io(fp)
     unsafe_pointer_to_objref(unsafe_load(fp).ioptr)
 end
 
+function _debug_io(msg)
+    #println(msg)
+end
+
 # As per read(2), returning the number of bytes read (possibly 0) or
 # negative (and setting errno) on errors.  Front-end code will call this
 # repeatedly if necessary to attempt to get the desired byte count.
@@ -21,6 +25,7 @@ function _hfile_backend_read(io::IO, buffer::Ptr{Cvoid}, nbytes::Csize_t)::Cssiz
     ## TODO: handle error, set errno and return negative value
     # TranscodingStreams.unsafe_read is different from Base.unsafe_read
     bytes_written = TranscodingStreams.unsafe_read(io, convert(Ptr{UInt8}, buffer), convert(Int, nbytes))
+    _debug_io("hfile: read $bytes_written ($nbytes requested)")
     return bytes_written
 end
 # As per write(2), returning the number of bytes written or negative (and
@@ -32,13 +37,16 @@ end
 function _hfile_backend_write(io::IO, buffer::Ptr{Cvoid}, nbytes::Csize_t)::Cssize_t
     ## TODO: handle error, set errno and return negative value
     bytes_written = unsafe_write(io, buffer, nbytes)
+    _debug_io("hfile: write $bytes_written ($nbytes requested)")
     return bytes_written
 end
 
 # As per lseek(2), returning the resulting offset within the stream or
 # negative (and setting errno) on errors.
 function hfile_backend_seek(fp, offset, whence)
-    _hfile_backend_seek(_restore_hfile_io(fp), offset, whence)
+    ans = _hfile_backend_seek(_restore_hfile_io(fp), offset, whence)
+    _debug_io("hfile: seek offset $offset with result $ans (whence $whence)")
+    return ans
 end
 function _hfile_backend_seek(io::IO, offset::Coff_t, whence::Cint)::Coff_t
     SEEK_SET = Cint(0)
@@ -80,6 +88,7 @@ end
 # Performs low-level flushing, if any, e.g., fsync(2); for writing streams
 # only.  Returns 0 for success or negative (and sets errno) on errors.
 function hfile_backend_flush(fp)
+    _debug_io("hfile: flush")
     _hfile_backend_flush(_restore_hfile_io(fp))
 end
 function _hfile_backend_flush(io::IO)::Cint
@@ -91,6 +100,7 @@ end
 # already have been flushed), returning 0 for success or negative (and
 # setting errno) on errors, as per close(2).
 function hfile_backend_close(fp)
+    _debug_io("hfile: close")
     _hfile_backend_close(_restore_hfile_io(fp))
 end
 function _hfile_backend_close(io::IO)::Cint

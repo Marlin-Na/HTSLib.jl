@@ -12,7 +12,8 @@ TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 htslib_jll = "f06fe41e-9474-5571-8c61-5634d2b2700c"
 
 [extras]
+FormatSpecimens = "3372ea36-2a1a-11e9-3eb7-996970b6ffbd"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["Test", "FormatSpecimens"]

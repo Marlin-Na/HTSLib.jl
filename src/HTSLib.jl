@@ -10,7 +10,8 @@ import BioGenerics:
     isoverlapping,
     metainfoval,
     metainfotag,
-    header
+    header,
+    IO.tryread!
 
 # BioGenerics reexport
 export seqname,
@@ -21,20 +22,22 @@ export seqname,
     isoverlapping,
     metainfoval,
     metainfotag,
-    header
+    header,
+    tryread!
 
 export sequence!,
     setsequence!,
     seqlength,
     mappingquality,
-    seqlevel,
+    refid,
+    refname,
     quality,
     quality!,
     setquality!,
     queryname
 
 export htslib
-#export eachrecord
+export eachrecord
 
 using Printf: @printf
 using Setfield: @set
@@ -45,7 +48,6 @@ import TranscodingStreams
 
 include("htslib/htslib.jl")
 include("bamrecord.jl")
-include("htsindex.jl")
 include("htsopen.jl")
 include("iteration.jl")
 
