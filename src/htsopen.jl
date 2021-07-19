@@ -192,7 +192,7 @@ function Base.open(::Type{HTSReadWriter}, args...; kwargs...)
 end
 
 function Base.open(f::Function, ::Type{HTSReadWriter}, args...; kwargs...)
-    io = HTSReadWriter(args..., kwargs...)
+    io = HTSReadWriter(HTSReadWriter, args...; kwargs...)
     try
         f(io)
     finally
