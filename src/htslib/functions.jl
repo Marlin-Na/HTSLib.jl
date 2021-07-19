@@ -66,3 +66,7 @@ function sam_itr_next(htsfp::Ptr{htsFile}, itr::Ptr{hts_itr_t}, r::Ptr{bam1_t})
         return hts_itr_next(is_bgzf ? unsafe_load(htsfp).fp : C_NULL, itr, r, htsfp)
     end
 end
+
+function sam_itr_destroy(iter)
+    hts_itr_destroy(iter)
+end

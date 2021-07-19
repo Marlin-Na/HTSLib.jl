@@ -59,6 +59,11 @@ const bam_plp_auto_f = Ptr{Cvoid}
 
 const hts_pos_t = Int64
 
+struct hts_pair_pos_t
+    beg::hts_pos_t
+    end0::hts_pos_t
+end
+
 # TODO: Define an initializer.
 struct kstring_t
     l::Csize_t

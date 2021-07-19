@@ -2,6 +2,9 @@
 # Wrapper of htsFile with customized backend
 # ------------------------------------------
 
+## ? It seems that htsindex does not have to associate with htsFile?
+## ? May consider removing sethtsindex! and use a new struct to manage index's lifetime.
+
 export SamHeader
 export HTSReadWriter
 
@@ -75,6 +78,10 @@ end
 
 function BioGenerics.header(hf::HTSReadWriter)
     hf.samheader
+end
+
+function BioGenerics.IO.stream(hf::HTSReadWriter)
+    hf.io
 end
 
 function SamHeader(hf::HTSReadWriter)
@@ -178,6 +185,8 @@ function HTSReadWriter(io::IO; index=nothing, write=nothing)
     h
 end
 
+# TODO: also implement it for HTSRegionsIterator
+
 function Base.open(::Type{HTSReadWriter}, args...; kwargs...)
     HTSReadWriter(args...; kwargs...)
 end
@@ -207,7 +216,7 @@ function htssetindex!(htsio::HTSReadWriter, index::AbstractString)
         ptr == C_NULL && error("error loading index file $(index)")
         let
             tmp = unsafe_load(pointer(htsio))
-            @set tmp.idx = ptr
+            tmp = @set tmp.idx = ptr
             unsafe_store!(pointer(htsio), tmp)
         end
         return htsio
@@ -222,7 +231,7 @@ function htssetindex!(htsio::HTSReadWriter, index::Nothing)
     oldidx = unsafe_load(pointer(htsio)).idx
     let
         tmp = unsafe_load(pointer(htsio))
-        @set tmp.idx = C_NULL
+        tmp = @set tmp.idx = C_NULL
         unsafe_store!(pointer(htsio), tmp)
     end
     oldidx != C_NULL && htslib.hts_idx_destroy(oldidx)
@@ -250,7 +259,7 @@ function htssetindex!(htsio::HTSReadWriter, index::Vector{UInt8})
     # assign new index
     let
         tmp = unsafe_load(pointer(htsio))
-        @set tmp.idx = ptr
+        tmp = @set tmp.idx = ptr
         unsafe_store!(pointer(htsio), tmp)
     end
 

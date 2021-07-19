@@ -11,7 +11,8 @@ import BioGenerics:
     metainfoval,
     metainfotag,
     header,
-    IO.tryread!
+    IO.tryread!,
+    IO.stream
 
 # BioGenerics reexport
 export seqname,
@@ -23,7 +24,8 @@ export seqname,
     metainfoval,
     metainfotag,
     header,
-    tryread!
+    tryread!,
+    stream
 
 export sequence!,
     setsequence!,

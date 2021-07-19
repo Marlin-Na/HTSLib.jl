@@ -102,4 +102,26 @@ end
         @test leftposition(record) == 10001
         @test rightposition(record) == 10110
     end
+
+    @testset "Bam random access" begin
+        bamio = HTSReadWriter(bam; index=bai, gcsclient=gcsclient)
+
+        @testset "single region" begin
+            bamitr1 = HTSRegionsIterator(bamio, "chr1:1000000-2000000")
+            bamitr2 = HTSRegionsIterator(bamio, "chr1", 1000000, 2000000)
+
+            @test length(collect(bamitr1)) == 25
+            @test length(collect(bamitr2)) == 25
+
+            @test !isnothing(tryread!(bamio, HTSRecord()))
+        end
+
+        @testset "unmapped reads" begin
+            bamitr = HTSRegionsIterator(bamio, "*")
+            @test length(collect(bamitr)) == 442
+
+            ## we have iterated unmapped reads at end of the file
+            @test isnothing(tryread!(bamio, HTSRecord()))
+        end
+    end
 end
