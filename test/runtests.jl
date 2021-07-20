@@ -123,5 +123,56 @@ end
             ## we have iterated unmapped reads at end of the file
             @test isnothing(tryread!(bamio, HTSRecord()))
         end
+
+        @testset "GC" begin
+            itr = open(HTSReadWriter, bam; index=bai, gcsclient=gcsclient) do reader
+                itr = HTSRegionsIterator(reader, "chr1", 1000000, 2000000)
+                @test !isnothing(read(itr))
+                itr
+            end
+            # reader has been closed, itr is invalid now, but it should be safe to finalize it.
+            finalize(itr)
+        end
+    end
+
+    @testset "CRAM random access" begin
+        # TODO: add index
+        #cramio = HTSReadWriter(cram; gcsclient=gcsclient)
+
+        # @testset "from file start" begin
+        #     itr = open(HTSReadWriter, cram; gcsclient=gcsclient) do reader
+        #         itr = HTSRegionsIterator(reader, ".")
+        #         @test !isnothing(read(itr))
+        #         itr
+        #     end
+        #     finalize(itr)
+        # end
+    end
+end
+
+@testset "Write hts file" begin
+    @testset "bam" begin
+        bamfile = joinpath(path_of_format("BAM"), "ce#1.bam")
+        bamin = open(HTSReadWriter, bamfile)
+        (path, io) = mktemp()
+        bamout = HTSReadWriter(io, "wbz")
+
+        # write header
+        write(bamout, header(bamin))
+        # write records
+        for r in bamin
+            write(bamout, r)
+        end
+
+        # flush and close
+        close(bamout)
+
+        # reread
+        f = HTSReadWriter(path)
+        @test HTSLib.format_description(f) == "BAM version 1 compressed sequence data"
+        records = collect(f)
+        @test length(records) == 1
+        @test refid(records[1]) == 1
+        @test rightposition(records[1]) == 102
     end
 end

@@ -65,8 +65,8 @@ mutable struct HTSReadWriter{T<:IO}
     htsFile::Ptr{htslib.htsFile}
     # hFILE pointer
     hfile::Ptr{htslib.hFILE_julia}
-    # samheader pointer
-    samheader::SamHeader
+    # samheader struct
+    samheader::Union{SamHeader,Nothing}
     function HTSReadWriter{T}() where {T}
         new{T}()
     end
@@ -109,7 +109,19 @@ function Base.show(io::IO, x::SamHeader)
     x
 end
 
-function HTSReadWriter(source::AbstractString; index=nothing, write=nothing, gcsclient=nothing, kwargs...)
+"""
+    HTSReadWriter(source, mode="r"; index=nothing, gcsclient=nothing, kwargs...)
+
+Create a reader/writer for SAM/BAM/CRAM files.
+
+`mode` may be specified to indicate the file format when writing to a file. For example,
+"wbz" means writing to bam file compressed with bgzf. See below for a list of available options.
+
+- 'r'/'w'/'a': read or write or append to a file.
+- 'b'/'c'/'f'/'F': binary format, cram file, fastq format, fasta format
+- 'z'/'g'/'u': bgzf compressed, gzip compressed, no compression
+"""
+function HTSReadWriter(source::AbstractString, mode="r"; index=nothing, gcsclient=nothing, kwargs...)
     # reuse gcsclient to download bam index and construct the reader
     if startswith(source, "gs://") && isnothing(gcsclient)
         gcsclient = GCSClient()
@@ -118,17 +130,13 @@ function HTSReadWriter(source::AbstractString; index=nothing, write=nothing, gcs
         index = read(remote_io(index; gcsclient=gcsclient))::Vector{UInt8}
     end
 
+    ## TODO
+    write = startswith(mode, "r") ? false : true
     bamio = remote_io(source; write=write, gcsclient=gcsclient)
-    HTSReadWriter(bamio; index=index, write=write, kwargs...)
+    HTSReadWriter(bamio, mode; index=index, kwargs...)
 end
 
-function HTSReadWriter(io::IO; index=nothing, write=nothing)
-    write2 = false
-    if isnothing(write) && applicable(iswritable, io) && iswritable(io)
-        write2 = true
-    end
-    mode = write2 ? "r+" : "r"
-
+function HTSReadWriter(source::IO, mode="r"; index=nothing)
     hfileptr = htslib.hfile_init(sizeof(htslib.hFILE_julia), pointer(mode), 0)
     hfileptr = convert(Ptr{htslib.hFILE_julia}, hfileptr)
     hfile_backend = Ref(htslib.hfile_julia_backend())
@@ -144,16 +152,16 @@ function HTSReadWriter(io::IO; index=nothing, write=nothing)
             hfile.base.offset   ,
             hfile.base.remaining,
         )
-        hfile2 = htslib.hFILE_julia(hfile_base2, pointer_from_objref(io))
+        hfile2 = htslib.hFILE_julia(hfile_base2, pointer_from_objref(source))
         unsafe_store!(hfileptr, hfile2)
     end
     ## htsFile pointer
     htsFileptr = htslib.hts_hopen(hfileptr, pointer("/dummy"), pointer(mode))
     ## wrapper type holding both julia object and pointers managed in C
-    #h = HTSReadWriter{typeof(io)}(htsFileptr, hfileptr, io, hfile_backend)
-    h = HTSReadWriter{typeof(io)}()
+    #h = HTSReadWriter{typeof(source)}(htsFileptr, hfileptr, source, hfile_backend)
+    h = HTSReadWriter{typeof(source)}()
     let
-        h.io = io
+        h.io = source
         h.hfile_backend = hfile_backend
         h.htsFile = htsFileptr
         h.hfile = hfileptr
@@ -177,12 +185,21 @@ function HTSReadWriter(io::IO; index=nothing, write=nothing)
     let
         # read sam header
         sam_hdr = htslib.sam_hdr_read(htsFileptr)
-        sam_hdr == C_NULL && error("error reading sam header")
-        h.samheader = SamHeader(sam_hdr)
+        if sam_hdr == C_NULL
+            h.samheader = nothing
+        else
+            h.samheader = SamHeader(sam_hdr)
+        end
     end
     # load index.
     htssetindex!(h, index)
     h
+end
+
+function format_description(hf::HTSReadWriter)
+    GC.@preserve hf begin
+        unsafe_string(htslib.hts_format_description(htslib.hts_get_format(pointer(hf))))
+    end
 end
 
 # TODO: also implement it for HTSRegionsIterator
@@ -192,7 +209,7 @@ function Base.open(::Type{HTSReadWriter}, args...; kwargs...)
 end
 
 function Base.open(f::Function, ::Type{HTSReadWriter}, args...; kwargs...)
-    io = HTSReadWriter(HTSReadWriter, args...; kwargs...)
+    io = HTSReadWriter(args...; kwargs...)
     try
         f(io)
     finally
@@ -272,8 +289,12 @@ function Base.show(io::IO, hf::HTSReadWriter)
         print(io, typeof(hf), " Invalid HTSReadWriter")
         return nothing
     end
-    nseq = length(filter(startswith("@SQ"), split(string(header(hf)), "\n")))
-    print(io, typeof(hf), " ", unsafe_string(htslib.hts_format_description(htslib.hts_get_format(hf.htsFile))), " with ", nseq, " reference sequences")
+    if isnothing(header(hf))
+        print(io, typeof(hf), " ", format_description(hf), " with no header")
+    else
+        nseq = length(filter(startswith("@SQ"), split(string(header(hf)), "\n")))
+        print(io, typeof(hf), " ", format_description(hf), " with ", nseq, " reference sequences")
+    end
 end
 
 # Methods
@@ -311,7 +332,8 @@ end
 
 # eof, flush, close
 
-# TODO: how to implement eof and flush?
+# TODO: eof, see https://github.com/samtools/htslib/issues/720
+# TODO: flush, use htslib.hflush
 
 function Base.close(hf::HTSReadWriter)
     # finalizer will run hts_close, which will close the underlying IO from julia
@@ -320,6 +342,31 @@ function Base.close(hf::HTSReadWriter)
     return nothing
 end
 
+# TODO: iswriteable, isreadable (false after hts_close) and isreadonly
+
 # write
 
-# TODO
+function Base.write(hf::HTSReadWriter, samheader::SamHeader)
+    ## TODO: check writable
+    GC.@preserve hf samheader begin
+        ret = htslib.sam_hdr_write(pointer(hf), pointer(samheader))
+        ret != 0 && error("error writing samheader to file ($ret)")
+        # if header has been successfully written, we update the cached header associated with the struct
+        hf.samheader = samheader
+    end
+    return nothing # base api returns the number of bytes written
+end
+
+function Base.write(hf::HTSReadWriter, samheader::SamHeader, record::HTSRecord)::Int
+    GC.@preserve hf samheader record begin
+        ret = htslib.sam_write1(pointer(hf), pointer(samheader), pointer(record))
+        ret < 0 && error("error writing record to file ($ret)")
+        return ret
+    end
+end
+
+function Base.write(hf::HTSReadWriter, record::HTSRecord)
+    samheader = header(hf)
+    write(hf, samheader, record)
+end
+

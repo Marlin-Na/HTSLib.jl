@@ -12,7 +12,7 @@ function _restore_hfile_io(fp)
 end
 
 function _debug_io(msg)
-    #println(msg)
+    # @async println(msg)
 end
 
 # As per read(2), returning the number of bytes read (possibly 0) or
