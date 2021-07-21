@@ -36,7 +36,9 @@ export sequence!,
     quality,
     quality!,
     setquality!,
-    queryname
+    queryname,
+    next_refid,
+    next_refpos
 
 export htslib
 export eachrecord
@@ -49,6 +51,7 @@ import HttpIO: HttpIO, PoorGCloudAuth, GCSClient, GCSFileIO, HttpFileIO
 import TranscodingStreams
 
 include("htslib/htslib.jl")
+include("recordflag.jl")
 include("bamrecord.jl")
 include("htsopen.jl")
 include("iteration.jl")

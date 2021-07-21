@@ -110,7 +110,7 @@ end
     elseif name == :l_extranul
         return bam.core.l_extranul
     elseif name == :flag
-        return bam.core.flag
+        return HTSRecordFlag(bam.core.flag)
     elseif name == :l_qname
         return bam.core.l_qname
     elseif name == :n_cigar
@@ -247,4 +247,16 @@ function queryname(record::HTSRecord)::String
         cstr = htslib.bam_get_qname(pointer(record))
         unsafe_string(pointer(cstr))
     end
+end
+
+function next_refid(record::HTSRecord)::Union{Int32,Missing}
+    ans = record.mtid + Int32(1)
+    ans == 0 && return missing
+    ans
+end
+
+function next_refpos(record::HTSRecord)::Union{Int32,Missing}
+    ans = record.mpos + Int32(1)
+    ans == 0 && return missing
+    ans
 end
