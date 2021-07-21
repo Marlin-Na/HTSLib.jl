@@ -128,6 +128,22 @@ end
     end
 end
 
+function Base.propertynames(record::HTSRecord)
+    return (
+        "pos",
+        "tid",
+        "bin",
+        "qual",
+        "l_extranul",
+        "flag",
+        "l_qname",
+        "n_cigar",
+        "l_qseq",
+        "mtid",
+        "mpos",
+        "isize",
+    )
+end
 
 ##### Accessor functions
 
