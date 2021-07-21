@@ -52,6 +52,7 @@ function Base.show(io::IO, record::HTSRecord)
         @printf(io, "%s(<%p>) %d:%d-%d ", summary(record), ptr, refid(record), leftposition(record), rightposition(record))
     end
     print(io, "\n")
+    print(io, "flag     : $(summary(record.flag))\n")
     print(io, "queryname: $(queryname(record))\n")
     print(io, "mapqual  : $(mappingquality(record))\n")
     print(io, "sequence : ")
