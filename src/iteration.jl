@@ -114,6 +114,10 @@ function HTSRegionsIterator(hf::HTSReadWriter, region::Tuple{<:Number,<:Number,<
     HTSRegionsIterator(hf, region_string_from_pos(hf, region[1], region[2], region[3]))
 end
 
+function HTSRegionsIterator(hf::HTSReadWriter, regions::AbstractVector{<:NTuple{3}})
+    HTSRegionsIterator(hf, getindex.(regions, 1), getindex.(regions, 2), getindex(regions, 3))
+end
+
 function HTSRegionsIterator(hf::HTSReadWriter, chr, start, stop)
     regions = region_string_from_pos.(hf, chr, start, stop)
     HTSRegionsIterator(hf, regions)
