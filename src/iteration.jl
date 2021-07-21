@@ -79,7 +79,7 @@ function HTSRegionsIterator(hf::HTSReadWriter, region::AbstractString)
 end
 
 # bad solution, this should be a feature request to htslib
-function region_string_from_pos(chr::AbstractString, start::Number, stop::Number)::String
+function region_string_from_pos(hf::HTSReadWriter, chr::AbstractString, start::Number, stop::Number)::String
     @assert start >= 0
     @assert stop >= 0
     start = Int(start)
@@ -87,16 +87,35 @@ function region_string_from_pos(chr::AbstractString, start::Number, stop::Number
     return "$chr:$start-$stop"
 end
 
+function region_string_from_pos(hf::HTSReadWriter, chr::Number, start::Number, stop::Number)::String
+    @assert chr >= 1
+    @assert start >= 0
+    @assert stop >= 0
+    # TODO: provide wrapper for sam_hdr_tid2name
+    chr_str = unsafe_string(htslib.sam_hdr_tid2name(pointer(header(hf)), Cint(chr-1)))
+    start = Int(start)
+    stop = Int(stop)
+    return "$chr_str:$start-$stop"
+end
+
 function HTSRegionsIterator(hf::HTSReadWriter, regions::Tuple{<:AbstractVector{<:AbstractString},<:AbstractVector{<:Number},<:AbstractVector{<:Number}})
-    HTSRegionsIterator(hf, region_string_from_pos.(regions[1], regions[2], regions[3]))
+    HTSRegionsIterator(hf, region_string_from_pos.(hf, regions[1], regions[2], regions[3]))
+end
+
+function HTSRegionsIterator(hf::HTSReadWriter, regions::Tuple{<:AbstractVector{<:Number},<:AbstractVector{<:Number},<:AbstractVector{<:Number}})
+    HTSRegionsIterator(hf, region_string_from_pos.(hf, regions[1], regions[2], regions[3]))
 end
 
 function HTSRegionsIterator(hf::HTSReadWriter, region::Tuple{<:AbstractString,<:Number,<:Number})
-    HTSRegionsIterator(hf, region_string_from_pos(region[1], region[2], region[3]))
+    HTSRegionsIterator(hf, region_string_from_pos(hf, region[1], region[2], region[3]))
+end
+
+function HTSRegionsIterator(hf::HTSReadWriter, region::Tuple{<:Number,<:Number,<:Number})
+    HTSRegionsIterator(hf, region_string_from_pos(hf, region[1], region[2], region[3]))
 end
 
 function HTSRegionsIterator(hf::HTSReadWriter, chr, start, stop)
-    regions = region_string_from_pos.(chr, start, stop)
+    regions = region_string_from_pos.(hf, chr, start, stop)
     HTSRegionsIterator(hf, regions)
 end
 

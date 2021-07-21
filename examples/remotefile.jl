@@ -23,7 +23,7 @@ end
 
 function count_remote_file_records(io::IO)
     nreads::Int = 0
-    for record in HTSLib.htsopen(io, "r")
+    for record in HTSReadWriter(io, "r")
         nreads += 1
     end
     println("number of reads: $nreads")
