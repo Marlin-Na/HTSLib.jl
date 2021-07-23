@@ -99,11 +99,11 @@ function region_string_from_pos(hf::HTSReadWriter, chr::Number, start::Number, s
 end
 
 function HTSRegionsIterator(hf::HTSReadWriter, regions::Tuple{<:AbstractVector{<:AbstractString},<:AbstractVector{<:Number},<:AbstractVector{<:Number}})
-    HTSRegionsIterator(hf, region_string_from_pos.(hf, regions[1], regions[2], regions[3]))
+    HTSRegionsIterator(hf, region_string_from_pos.(Ref(hf), regions[1], regions[2], regions[3]))
 end
 
 function HTSRegionsIterator(hf::HTSReadWriter, regions::Tuple{<:AbstractVector{<:Number},<:AbstractVector{<:Number},<:AbstractVector{<:Number}})
-    HTSRegionsIterator(hf, region_string_from_pos.(hf, regions[1], regions[2], regions[3]))
+    HTSRegionsIterator(hf, region_string_from_pos.(Ref(hf), regions[1], regions[2], regions[3]))
 end
 
 function HTSRegionsIterator(hf::HTSReadWriter, region::Tuple{<:AbstractString,<:Number,<:Number})
@@ -115,11 +115,14 @@ function HTSRegionsIterator(hf::HTSReadWriter, region::Tuple{<:Number,<:Number,<
 end
 
 function HTSRegionsIterator(hf::HTSReadWriter, regions::AbstractVector{<:NTuple{3}})
-    HTSRegionsIterator(hf, getindex.(regions, 1), getindex.(regions, 2), getindex(regions, 3))
+    HTSRegionsIterator(hf, getindex.(regions, 1), getindex.(regions, 2), getindex.(regions, 3))
 end
 
-function HTSRegionsIterator(hf::HTSReadWriter, chr, start, stop)
-    regions = region_string_from_pos.(hf, chr, start, stop)
+function HTSRegionsIterator(hf::HTSReadWriter,
+        chr::Union{AbstractString,Number,AbstractVector},
+        start::Union{Number,AbstractVector},
+        stop::Union{Number,AbstractVector})
+    regions = region_string_from_pos.(Ref(hf), chr, start, stop)
     HTSRegionsIterator(hf, regions)
 end
 
