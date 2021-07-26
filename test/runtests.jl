@@ -176,3 +176,28 @@ end
         @test rightposition(records[1]) == 102
     end
 end
+
+@testset "Regions iterator" begin
+
+    @testset "Constructor" begin
+        
+        bam = joinpath(path_of_format("BAM"), "R_12h_D06.uniq.q40.bam")
+        bai = joinpath(path_of_format("BAM"), "R_12h_D06.uniq.q40.bam.bai")
+        reader = HTSReadWriter(bam; index=bai)
+        
+        # Vector{String}
+        @test length(collect(HTSRegionsIterator(reader, ["chrM:1-500"]))) == 2
+        # String
+        @test length(collect(HTSRegionsIterator(reader, "chrM:1-500"))) == 2
+        # Tuple
+        @test length(collect(HTSRegionsIterator(reader, ("chrM", 1, 500)))) == 2
+        @test length(collect(HTSRegionsIterator(reader, (22, 1, 500)))) == 2
+        # Vector{Tuple}
+        @test length(collect(HTSRegionsIterator(reader, [("chrM", 1, 500)]))) == 2
+        @test length(collect(HTSRegionsIterator(reader, [(22, 1, 500)]))) == 2
+        # args
+        @test length(collect(HTSRegionsIterator(reader, "chrM", 1, 500))) == 2
+        @test length(collect(HTSRegionsIterator(reader, 22, 1, 500))) == 2
+        
+    end
+end

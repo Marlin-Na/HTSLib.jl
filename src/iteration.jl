@@ -53,8 +53,12 @@ HTSRegionsIterator
 mutable struct HTSRegionsIterator{T}
     htsreader::HTSReadWriter{T}
     itr_ptr::Ptr{htslib.hts_itr_t}
-    function HTSRegionsIterator(hf::HTSReadWriter{T}, regions::Vector{String}) where T
+    function HTSRegionsIterator(hf::HTSReadWriter{T}, regions::AbstractVector) where T
+        if !isa(regions, Vector{String})
+            return HTSRegionsIterator(hf, map(r -> region_string(hf, r), regions))
+        end
         # also need to preserve pointer array from gc
+        @assert isa(regions, Vector{String})
         regarray = pointer.(regions)
         GC.@preserve regions regarray begin
             idxptr = unsafe_load(pointer(hf)).idx
@@ -72,14 +76,27 @@ mutable struct HTSRegionsIterator{T}
     end
 end
 
-# Single region
-function HTSRegionsIterator(hf::HTSReadWriter, region::AbstractString)
-    regs = String[String(region)]
-    HTSRegionsIterator(hf, regs)
+function HTSRegionsIterator(hf::HTSReadWriter, chr, start, stop)
+    regions = String[]
+    if isa(chr, AbstractString)
+        chr = Ref(chr)
+    end
+    for (c, s, e) in zip(chr, start, stop)
+        region = region_string(hf, Tuple{typeof(c),typeof(s),typeof(e)}((c, s, e)))
+        push!(regions, region)
+    end
+    HTSRegionsIterator(hf, regions)
+end
+
+function HTSRegionsIterator(hf::HTSReadWriter, region::Union{Tuple, AbstractString})
+    regions = Vector{typeof(region)}(undef, 1)
+    regions[1] = region
+    return HTSRegionsIterator(hf, regions)
 end
 
 # bad solution, this should be a feature request to htslib
-function region_string_from_pos(hf::HTSReadWriter, chr::AbstractString, start::Number, stop::Number)::String
+function region_string(hf::HTSReadWriter, regionspec::Tuple{<:AbstractString,<:Real,<:Real})::String
+    (chr, start, stop) = regionspec
     @assert start >= 0
     @assert stop >= 0
     start = Int(start)
@@ -87,7 +104,8 @@ function region_string_from_pos(hf::HTSReadWriter, chr::AbstractString, start::N
     return "$chr:$start-$stop"
 end
 
-function region_string_from_pos(hf::HTSReadWriter, chr::Number, start::Number, stop::Number)::String
+function region_string(hf::HTSReadWriter, regionspec::Tuple{<:Real,<:Real,<:Real})::String
+    (chr, start, stop) = regionspec
     @assert chr >= 1
     @assert start >= 0
     @assert stop >= 0
@@ -98,32 +116,8 @@ function region_string_from_pos(hf::HTSReadWriter, chr::Number, start::Number, s
     return "$chr_str:$start-$stop"
 end
 
-function HTSRegionsIterator(hf::HTSReadWriter, regions::Tuple{<:AbstractVector{<:AbstractString},<:AbstractVector{<:Number},<:AbstractVector{<:Number}})
-    HTSRegionsIterator(hf, region_string_from_pos.(Ref(hf), regions[1], regions[2], regions[3]))
-end
-
-function HTSRegionsIterator(hf::HTSReadWriter, regions::Tuple{<:AbstractVector{<:Number},<:AbstractVector{<:Number},<:AbstractVector{<:Number}})
-    HTSRegionsIterator(hf, region_string_from_pos.(Ref(hf), regions[1], regions[2], regions[3]))
-end
-
-function HTSRegionsIterator(hf::HTSReadWriter, region::Tuple{<:AbstractString,<:Number,<:Number})
-    HTSRegionsIterator(hf, region_string_from_pos(hf, region[1], region[2], region[3]))
-end
-
-function HTSRegionsIterator(hf::HTSReadWriter, region::Tuple{<:Number,<:Number,<:Number})
-    HTSRegionsIterator(hf, region_string_from_pos(hf, region[1], region[2], region[3]))
-end
-
-function HTSRegionsIterator(hf::HTSReadWriter, regions::AbstractVector{<:NTuple{3}})
-    HTSRegionsIterator(hf, getindex.(regions, 1), getindex.(regions, 2), getindex.(regions, 3))
-end
-
-function HTSRegionsIterator(hf::HTSReadWriter,
-        chr::Union{AbstractString,Number,AbstractVector},
-        start::Union{Number,AbstractVector},
-        stop::Union{Number,AbstractVector})
-    regions = region_string_from_pos.(Ref(hf), chr, start, stop)
-    HTSRegionsIterator(hf, regions)
+function region_string(hf::HTSReadWriter, regionspec::AbstractString)::String
+    String(regionspec)
 end
 
 function BioGenerics.IO.tryread!(itr::HTSRegionsIterator, record::HTSRecord)::Union{HTSRecord,Nothing}
