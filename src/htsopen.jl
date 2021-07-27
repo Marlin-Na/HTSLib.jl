@@ -136,7 +136,11 @@ function HTSReadWriter(source::AbstractString, mode="r"; index=nothing, gcsclien
     HTSReadWriter(bamio, mode; index=index, kwargs...)
 end
 
-function HTSReadWriter(source::IO, mode="r"; index=nothing)
+function HTSReadWriter(source::IO, mode="r"; index=nothing, gcsclient=nothing)
+    # reusing gcsclient to download index data if gcsclient is specified
+    if isa(index, AbstractString) && startswith(index, "gs://") && (!isnothing(gcsclient))
+        index = read(remote_io(index; gcsclient=gcsclient))
+    end
     hfileptr = htslib.hfile_init(sizeof(htslib.hFILE_julia), pointer(mode), 0)
     hfileptr = convert(Ptr{htslib.hFILE_julia}, hfileptr)
     hfile_backend = Ref(htslib.hfile_julia_backend())
