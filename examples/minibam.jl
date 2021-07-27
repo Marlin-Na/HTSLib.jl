@@ -11,7 +11,8 @@ function make_minibam(bamfile, indexfile, regions, outfile; gcsclient=nothing)
     end
 
     ## First pass to find all mate regions
-    reader = HTSReadWriter(bamfile; index=indexfile, gcsclient=gcsclient)
+    bamio = GCSFileIO(bamfile, gcsclient; bufsize=128 * 1024) # TODO: set proper bufsize
+    reader = HTSReadWriter(bamio; index=indexfile, gcsclient=gcsclient)
     mate_regions = String[]
     for r in HTSRegionsIterator(reader, regions)
         reg = find_mate_region(header(reader), r)
