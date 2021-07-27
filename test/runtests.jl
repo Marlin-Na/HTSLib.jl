@@ -16,6 +16,26 @@ import HttpIO
         @test sizeof(htslib.bam1_core_t) == 48
         @test sizeof(htslib.bam1_t) == 80
     end
+
+    @testset "cigar" begin
+        bamfile = joinpath(path_of_format("BAM"), "ce#1.bam")
+        reader = open(HTSReadWriter, bamfile)
+        record = read(reader)
+        GC.@preserve record begin
+            record_ptr = pointer(record)
+            n_cigar = record.n_cigar
+            @test n_cigar == 3
+            cigar1 = unsafe_load(htslib.bam_get_cigar(record_ptr), 1)
+            cigar2 = unsafe_load(htslib.bam_get_cigar(record_ptr), 2)
+            cigar3 = unsafe_load(htslib.bam_get_cigar(record_ptr), 3)
+            @test Char(htslib.bam_cigar_opchar(htslib.bam_cigar_op(cigar1))) == 'M'
+            @test Char(htslib.bam_cigar_opchar(htslib.bam_cigar_op(cigar2))) == 'D'
+            @test Char(htslib.bam_cigar_opchar(htslib.bam_cigar_op(cigar3))) == 'M'
+            @test htslib.bam_cigar_oplen(cigar1) == 27
+            @test htslib.bam_cigar_oplen(cigar2) == 1
+            @test htslib.bam_cigar_oplen(cigar3) == 73
+        end
+    end
 end
 
 # High-level API
