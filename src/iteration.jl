@@ -109,8 +109,7 @@ function region_string(hf::HTSReadWriter, regionspec::Tuple{<:Real,<:Real,<:Real
     @assert chr >= 1
     @assert start >= 0
     @assert stop >= 0
-    # TODO: provide wrapper for sam_hdr_tid2name
-    chr_str = unsafe_string(htslib.sam_hdr_tid2name(pointer(header(hf)), Cint(chr-1)))
+    chr_str = refname(header(hf), chr)
     start = Int(start)
     stop = Int(stop)
     return "$chr_str:$start-$stop"

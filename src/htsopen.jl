@@ -55,7 +55,32 @@ function SamHeader(x::SamHeader)
     SamHeader(dup)
 end
 
-### TODO: wrap sam_hdr_nref, sam_hdr_name2tid, sam_hdr_tid2name and sam_hdr_tid2len
+function BioGenerics.seqname(hdr::SamHeader, tid::Integer)
+    GC.@preserve hdr begin
+        ctid = Cint(tid - Cint(1)) # one-based to zero-based
+        ptr = htslib.sam_hdr_tid2name(pointer(header(hf)), ctid)
+        ptr == C_NULL && throw(KeyError(tid))
+        chr_str = unsafe_string(ptr)
+        chr_str
+    end
+end
+
+function refname(hdr::SamHeader, tid::Integer)
+    seqname(hdr, tid)
+end
+
+function refid(hdr::SamHeader, chrname::AbstractString)::Int
+    GC.@preserve hdr begin
+        chrname = convert(String, chrname)
+        ret::Int = htslib.sam_hdr_name2tid(pointer(hdr), pointer(chrname))
+        ret == -1 && throw(KeyError(chrname))
+        ret == -2 && error("header could not be parsed")
+        ans = ret + 1 # zero-based to one-based
+        ans
+    end
+end
+
+### TODO: wrap sam_hdr_nref and sam_hdr_tid2len
 
 mutable struct HTSReadWriter{T<:IO}
     # hold the reference to objects below to avoid gc

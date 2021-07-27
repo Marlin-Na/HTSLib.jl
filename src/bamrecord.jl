@@ -64,6 +64,8 @@ function Base.show(io::IO, record::HTSRecord)
     for q in quality(record)
         print(io, quality_char(q))
     end
+    print(io, "\n")
+    print(io, "matepos  : $(next_refid(record)) : $(next_refpos(record))\n")
     record
 end
 
