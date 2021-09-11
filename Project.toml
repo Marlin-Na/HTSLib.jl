@@ -11,6 +11,9 @@ Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 htslib_jll = "f06fe41e-9474-5571-8c61-5634d2b2700c"
 
+[compat]
+Setfield = "0.7"
+
 [extras]
 FormatSpecimens = "3372ea36-2a1a-11e9-3eb7-996970b6ffbd"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
